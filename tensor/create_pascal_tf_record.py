@@ -175,36 +175,39 @@ def main(_):
 #    examples_path = os.path.join(data_dir, 'ImageSets', 'Main',
 #                                 'actor_' + FLAGS.set + '.txt')
     annotations_dir = os.path.join(data_dir, FLAGS.annotations_dir)
+    examples_list_dup = []
     for examples_path in glob.glob(os.path.join(data_dir, 'ImageSets', 'Main', '*' + FLAGS.set + '.txt')):
-            examples_list = dataset_util.read_examples_list(examples_path)
+            examples_list_dup.extend(dataset_util.read_examples_list(examples_path))
+    #remove the dupliate files in examples_list_dup
+    examples_list = list(set(examples_list_dup))
 
-            print('Generate TFrecord for %s'%examples_list)
+    print('Generate TFrecord for %s'%examples_list)
 
-            for idx, example in enumerate(examples_list):
-              if idx % 100 == 0:
-                logging.info('On image %d of %d', idx, len(examples_list))
-              path = os.path.join(annotations_dir, example + '.xml')
-              with tf.gfile.GFile(path, 'r') as fid:
-                xml_str = fid.read()
-              xml = etree.fromstring(xml_str)
-              data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
+    for idx, example in enumerate(examples_list):
+      if idx % 100 == 0:
+	logging.info('On image %d of %d', idx, len(examples_list))
+      path = os.path.join(annotations_dir, example + '.xml')
+      with tf.gfile.GFile(path, 'r') as fid:
+	xml_str = fid.read()
+      xml = etree.fromstring(xml_str)
+      data = dataset_util.recursive_parse_xml_to_dict(xml)['annotation']
 
-              #leo: Check whether data format is correct or not
-              if 'object' not in data.keys():
-                print('File %s do not have object key, skip it'%example)
-                continue
-                
-              if 'filename' not in data.keys():
-                print('File %s do not have filename key, skip it'%example)
-                continue
+      #leo: Check whether data format is correct or not
+      if 'object' not in data.keys():
+	print('File %s do not have object key, skip it'%example)
+	continue
+	
+      if 'filename' not in data.keys():
+	print('File %s do not have filename key, skip it'%example)
+	continue
 
-              if 'size' not in data.keys():
-                print('File %s do not have size key, skip it'%example)
-                continue
+      if 'size' not in data.keys():
+	print('File %s do not have size key, skip it'%example)
+	continue
 
-              tf_example = dict_to_tf_example(data, FLAGS.data_dir, label_map_dict,
-                                              FLAGS.ignore_difficult_instances)
-              writer.write(tf_example.SerializeToString())
+      tf_example = dict_to_tf_example(data, FLAGS.data_dir, label_map_dict,
+				      FLAGS.ignore_difficult_instances)
+      writer.write(tf_example.SerializeToString())
 
   writer.close()
 
